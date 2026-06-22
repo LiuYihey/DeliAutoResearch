@@ -1,0 +1,22 @@
+{
+  "task_slug": "_example",
+  "topic": "Example autonomous research survey",
+  "iteration": 0,
+  "total_findings": 0,
+  "last_iteration_findings": 0,
+  "status": "initialized",
+  "stale_count": 0,
+  "last_seen": null,
+  "phase": 0,
+  "phase_targets": {
+    "0": "topic_selection",
+    "1": 6.0,
+    "2": 7.5,
+    "3": 8.5
+  },
+  "target_score": 8.0,
+  "current_score": 0.0,
+  "nudge_count": 0,
+  "active_sub_skill": null,
+  "active_direction": null
+}

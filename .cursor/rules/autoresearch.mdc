@@ -1,0 +1,12 @@
+---
+description: Deli AutoResearch autonomous research workflow — read AGENTS.md and follow zero-interaction protocol
+globs:
+alwaysApply: true
+---
+
+When working in this repository:
+
+1. Read `AGENTS.md` at the repo root before starting any research task.
+2. Follow `Deli_AutoResearch/SKILL.md` behavioral constraints: zero interaction, persist state to `tasks/<slug>/state/`, fresh session per iteration.
+3. Route paper work via `Deli_AutoResearch/skills/router.md` and run `python tools/check_gates.py` between iterations.
+4. Orchestrator ticks use `Deli_AutoResearch/orchestrator/loop_prompt.md`.

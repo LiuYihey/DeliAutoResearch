@@ -1,0 +1,11 @@
+{
+  "hypothesis": "",
+  "supports_claim": "",
+  "independent_vars": [],
+  "dependent_vars": [],
+  "control_vars": [],
+  "statistical_plan": "",
+  "path": "api",
+  "trials": 3,
+  "preregistered_at": null
+}
