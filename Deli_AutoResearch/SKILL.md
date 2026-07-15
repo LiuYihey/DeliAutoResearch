@@ -122,8 +122,11 @@ Stall detection: if progress has no update for over 2 hours and the last output 
 | B Parallel exploration | complex sub-problems | fire multiple agents in one message: investigation, refutation, cross-domain analogy |
 | C Experiment run       | long compute jobs    | start minute-level polling right after submit: auto-diagnose errors, fix, resubmit |
 | D Verification         | post-iteration QA    | an independent subagent audits the evidence chain of findings |
+| E Independent review   | peer review round    | a fresh subagent runs the 5-persona review; no external API key required (Backend B in `skills/peer_review_simulation/SKILL.md`) |
 
 A subagent prompt should include: background, a verifiable deliverable, working directory, file/line caps, and completion criteria.
+
+**Pattern E (API-free independent review).** When no OpenAI-compatible API key is available, peer review is delegated to a fresh subagent launched via the host agent's `Task` tool (`subagent_type=general_purpose_task` or equivalent). The subagent inherits the host's own model and quota — no extra credential is needed. It reads the same grounded-evidence inputs (fulltext, raw_results, gate outputs), enforces the same anti-hallucination v3 iron rules (every weakness carries `paper_quote` + `fulltext_quote` + `char_offset`), and writes `paper/review_round_N.json` in the same schema as `call_api.py`. Validated end-to-end on the affective-EEG survey (6.0 → 9.0 over 10 rounds, zero external API keys). Full launch contract and brief template in `skills/peer_review_simulation/SKILL.md`.
 
 ## 9. Engineering Constraints
 
@@ -133,20 +136,41 @@ A subagent prompt should include: background, a verifiable deliverable, working 
 4. Citation-like content is verified every 20 entries, never batched up.
 5. With multiple candidate directions, prefer adding diversity over digging one deeper.
 6. Unresolvable external-dependency failures escalate (full report + notify the owner + poll for a reply); never abandon silently.
+7. **(Anti-hallucination v2) Provenance-or-die** — Any entry written to `references.bib` must have a corresponding API call anchor in `paper/retrieval_log.jsonl` (matched by DOI / arXiv ID / title). Entries without an anchor are treated as fabricated; Gate 1.5 blocks progress.
+8. **(Anti-hallucination v2) Multi-source retrieval** — Non-arXiv citations must be retrieved via `search_crossref.py` / `search_dblp.py` / `search_semantic_scholar.py`. The LLM must never fill fields (author / volume / issue / pages / DOI / booktitle) from memory.
+9. **(Anti-hallucination v2) Numerical claim anchoring** — Exact numerical values appearing in section files (`58.6%`, `N=24`, `32 Hz`, etc.) must be anchored to a verbatim source string in `retrieval_log.jsonl`'s `extra.summary` or in `fulltext/<cite_key>.txt`. Gate 1.6 blocks unanchored claims.
+10. **(Anti-hallucination v2) LLM responsibility compression** — In literature_survey the LLM does only three things: write query terms / score LQS / tag A-B-C-D depth. Editing bib files directly, rewriting `@article` to `@inproceedings`, or writing numerical claims from memory is forbidden.
+11. **(Anti-hallucination v3) Fulltext-first** — A/B-level citations must have their full text fetched to `paper/fulltext/<cite_key>.txt` (via `tools/fetch_fulltext.py`). All factual and numerical claims anchor to the full text first; abstract is only a fallback.
+12. **(Anti-hallucination v3) Grounded writing** — Any section paragraph containing factual claims must begin with a JSON claims block; each claim must include `cite_key` + `quote`, and the quote must verbatim match the full text. If `tools/grounded_writing.py` verification fails, the LaTeX output is rejected.
+13. **(Anti-hallucination v3) Factual claim anchoring** — Factual statements in sections (e.g. "X proposed Y", "Z demonstrated W") must be findable in the cited full text (verb + >=70% keyword match). Gate 1.7 blocks unanchored claims.
+14. **(Anti-hallucination v3) Conclusion grounding** — Every numerical / comparative / summary statement in the conclusion section must be based on `paper/raw_results.jsonl` (self-run experiments) or on the cited paper's full text. Gate 1.8 blocks ungrounded conclusions.
+15. **(Anti-hallucination v3) Metadata cross-validation** — Bib metadata (title/year/authors/venue/doi) must be cross-validated across CrossRef / DBLP / Semantic Scholar. If any field disagrees across all three sources, that is a FAIL and Gate 1.9 blocks progress.
+16. **(Anti-hallucination v3) Solid evidence chain** — Any paper claim must be traceable backwards to either (a) experimental data in `raw_results.jsonl` or (b) a verbatim quote in `fulltext/<cite_key>.txt`. A claim with no traceable evidence is treated as a hallucination and must not be retained.
 
 ## 10. Validation & Limits
 
 The framework has carried several heterogeneous tasks: academic paper writing, long-horizon research, etc. Paper-track output:
 
-| Paper                                             | Pages | Citations | Self-rated |
-| ------------------------------------------------- | ----- | --------- | ---------- |
-| Autonomous Research Agents                        | 59    | 228       | 8.0/10     |
-| Continual Learning                                | 65    | 326       | 8.0/10     |
-| Long-Horizon Decision-Making                      | 55    | 384       | 8.0/10     |
-| Self-Play (285B RL experiment + theory hardening) | 75    | 217       | 8.6/10     |
+| Paper                                             | Pages | Citations | Self-rated | Review backend |
+| ------------------------------------------------- | ----- | --------- | ---------- | -------------- |
+| Autonomous Research Agents                        | 59    | 228       | 8.0/10     | A (API)        |
+| Continual Learning                                | 65    | 326       | 8.0/10     | A (API)        |
+| Long-Horizon Decision-Making                      | 55    | 384       | 8.0/10     | A (API)        |
+| Self-Play (285B RL experiment + theory hardening) | 75    | 217       | 8.6/10     | A (API)        |
+| Affective EEG/BCI survey (IEEE RBME)              | —     | —         | 9.0/10     | B (subagent, no API key) |
 
 Limits:
 1. Scores come from in-framework multi-persona simulated review; comparable only longitudinally within the same protocol, not an external quality claim.
 2. The longest continuous run on record was 72 hours, with 6 directional human inputs during it — zero operational intervention, directional intervention retained.
-3. Fabricated citations and data artifacts originate from the LLM itself; the framework makes external checking a mechanical step in the process, it does not remove the error source.
+3. Fabricated citations and data artifacts originate from the LLM itself; the **anti-hallucination v2+v3** stack closes the loop end-to-end:
+   - v2 retrieval_log mandatory anchor (Gate 1.5)
+   - v2 multi-source API retrieval (search_crossref / dblp / semantic_scholar)
+   - v2 numerical claim anchoring (Gate 1.6)
+   - v3 fulltext fetch (fetch_fulltext.py)
+   - v3 grounded writing protocol (grounded_writing.py)
+   - v3 factual claim anchoring to full text (Gate 1.7)
+   - v3 conclusion must be grounded in raw_results (Gate 1.8)
+   - v3 three-way metadata cross-validation (Gate 1.9)
+
+   There is no "remaining risk" escape hatch and no "human final check" fallback. If a gate fails, the task does not advance until the LLM repairs the issue using real API retrieval plus a verbatim full-text quote.
 4. Separation of duties relies on protocol constraints, not model self-discipline; removing the constraints brings overstepping behavior back.

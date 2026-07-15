@@ -21,6 +21,23 @@ def init_task(slug: str, topic: str = "", tasks_dir: Path | None = None) -> Path
 
     shutil.copytree(TEMPLATES / "task", dest)
 
+    # Anti-hallucination v3 scaffolding: ensure paper/fulltext/ + retrieval_log.jsonl
+    # + raw_results.jsonl + grounded_writes/ exist from day zero.
+    paper_dir = dest / "paper"
+    (paper_dir / "fulltext").mkdir(exist_ok=True)
+    (paper_dir / "fulltext" / ".gitkeep").write_text("", encoding="utf-8")
+    (paper_dir / "grounded_writes").mkdir(exist_ok=True)
+    (paper_dir / "grounded_writes" / ".gitkeep").write_text("", encoding="utf-8")
+    retrieval_log = paper_dir / "retrieval_log.jsonl"
+    if not retrieval_log.exists():
+        retrieval_log.write_text("", encoding="utf-8")
+    raw_results = paper_dir / "raw_results.jsonl"
+    if not raw_results.exists():
+        raw_results.write_text("", encoding="utf-8")
+    citation_plan = paper_dir / "citation_plan.jsonl"
+    if not citation_plan.exists():
+        citation_plan.write_text("", encoding="utf-8")
+
     spec_path = dest / "state" / "task_spec.md"
     text = spec_path.read_text(encoding="utf-8")
     text = text.replace("{{TOPIC}}", topic or slug.replace("-", " "))
@@ -40,6 +57,16 @@ def init_task(slug: str, topic: str = "", tasks_dir: Path | None = None) -> Path
     progress = json.loads((dest / "state" / "progress.json").read_text(encoding="utf-8"))
     progress["task_slug"] = slug
     progress["topic"] = topic_val
+    # Anti-hallucination tracking fields (initialised empty)
+    progress.setdefault("anti_hallucination", {
+        "retrieval_log_entries": 0,
+        "fulltext_fetched": 0,
+        "fulltext_missing": 0,
+        "grounded_writes_verified": 0,
+        "gates_passing": [],
+        "gates_failing": [],
+        "last_gate_check": None,
+    })
     (dest / "state" / "progress.json").write_text(
         json.dumps(progress, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )

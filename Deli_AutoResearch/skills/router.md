@@ -28,7 +28,12 @@ Override with `progress.active_sub_skill` if orchestrator sets explicit focus.
 
 | Weakness keyword | Route to | Tool |
 |------------------|----------|------|
-| citation, arxiv, recent, coverage | literature_survey | search_arxiv.py, verify_citations.py |
+| citation, arxiv, recent, coverage | literature_survey | search_arxiv.py, search_crossref.py, search_dblp.py, search_semantic_scholar.py, verify_citations.py |
+| provenance, hallucinat, fabricated, orphan | literature_survey (re-anchor) | verify_citations.py, retrieval_log.py |
+| numerical, unsupported, claim, accuracy | literature_survey (verify) | check_numerical_claims.py |
+| factual, misrepresent, contradict, mismatch | literature_survey (re-ground) | fetch_fulltext.py, check_factual_claims.py, grounded_writing.py |
+| conclusion, overstated, unsupported conclusion | experiment_design + paper_structure | verify_conclusions.py, raw_results.jsonl |
+| metadata, wrong author, wrong year, wrong venue | literature_survey (cross-validate) | cross_validate_metadata.py |
 | structure, taxonomy, transition, claim | paper_structure | — |
 | experiment, rigor, trial, ablation | experiment_design | call_api.py |
 | table, figure, error bar, visualization | figures_tables | compile_paper.py |

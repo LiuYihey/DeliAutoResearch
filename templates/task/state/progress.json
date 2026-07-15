@@ -18,5 +18,14 @@
   "current_score": 0.0,
   "nudge_count": 0,
   "active_sub_skill": null,
-  "active_direction": null
+  "active_direction": null,
+  "anti_hallucination": {
+    "retrieval_log_entries": 0,
+    "fulltext_fetched": 0,
+    "fulltext_missing": 0,
+    "grounded_writes_verified": 0,
+    "gates_passing": [],
+    "gates_failing": [],
+    "last_gate_check": null
+  }
 }
